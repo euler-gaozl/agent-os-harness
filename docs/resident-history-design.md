@@ -56,6 +56,7 @@ The minimal change crosses several readers, not the model decision loop:
 | ToolHistoryProjection | Bound old header/definition/update retention by active declaration series and live references; cannot discard a header still named by an addition |
 | TokenMeter | Advance its event cursor before release; a first read must not silently restart at zero after history has left memory |
 | Session projection registry | Materialize every mounted projection before release; reject or explicitly rebuild late registration instead of returning an incomplete state |
+| RuntimeContextProjection | Preserve the distinction between context never having existed and context having been compacted away; forbid late construction after eviction or restore its folded state |
 | Compact entry inspection | Replace the backwards full-log scan with folded open-turn/unmatched-compaction/last-seed state; absence of a seed marker is itself known state |
 | Snapshot/fork/invariant consumers | Full-history reads must remain explicit and truthful; a resident-only subset must never masquerade as complete `snapshotEvents()` |
 
@@ -65,6 +66,17 @@ dependence and no pending append publication. A failed/unknown acknowledgement
 must preserve pending data and block subsequent effects. The Runtime ledger and
 archive stay authoritative; the Node process gets no writable journal or database
 credentials. Deleting resident history is not permission to delete its archive.
+
+The independent review also identified secondary references: SurfaceManager's
+`projectedMessages` can retain replaced nodes, and ToolHistoryProjection retains
+old headers. The current runner does not mount a plugin producing the former
+message projections, so this is a future retention requirement, not a proven
+source of the measured growth. A candidate must freeze its plugin/consumer set
+or reject unsafe late construction, unloading and re-registration. Release uses
+the captured acknowledged `start + count`, never the newer Session sequence after
+an awaited response; events appended while waiting remain unconfirmed. Start
+with explicit checkpoint acknowledgements. GC timing and RSS must not change
+the replay-visible checkpoint schedule.
 
 ## Candidate contract and implementation order
 
@@ -90,3 +102,9 @@ This changes DSH storage/projections while leaving its AgentLoop, tool dispatch
 and compaction decisions in charge. The first accepted patch should include
 the retained data structures and the consumer handoff together; a log splice,
 larger heap limit, or lower model window does not satisfy this contract.
+
+The existing independent architecture reviewer read the code, benchmark, six
+reports and matching script/artifact hashes. It found no blocker to committing
+this measurement/design and required the reader boundaries above before any
+eviction implementation. The reviewer did not run tests or inspect a working
+retention patch; no such patch exists in this increment.
