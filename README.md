@@ -1,7 +1,10 @@
 # Agent OS Harness
 
-Source-owned DSH kernel candidate for the platform Worker. This repository is
-preparation for the storage/context phase; no deployed Worker selects it yet.
+Source-owned DSH kernel for the platform Worker. On 2026-10-13 the Windows
+installation activated `dsh-source-639ed015-state-v1` from `ec21432` / tag
+`v0.1.0-rc.1`. The integration repository records actual model, release and restore
+evidence in `docs/source-engine-activation-20261013.md`. Historical engines stay
+pinned. Activation does not establish bounded Session memory or complete delivery.
 
 The upstream tag `dsh-v0.2.0-rc.2` resolves to
 `639ed015397290b3745d163aafe02ffee4aa3f84`. `upstream-lock.json` records the
@@ -39,9 +42,9 @@ Node receives no provider key or database login. The Go Worker remains responsib
 for recorded model/tool transport, leases and receipts; Runtime is the durable
 authority. Importing a source package does not mount its capabilities.
 
-The source persistence/context candidate below is implemented with controlled
-protocol tests. Real Worker/Runtime integration, bounded Session history and
-cache cleanup remain open. Existing engine IDs and historical npm/runner
+The source persistence/context implementation below has controlled protocol
+tests; actual Worker/Runtime and provider acceptance is recorded by the integration
+repository. Bounded Session history and cache cleanup remain open. Existing engine IDs and historical npm/runner
 combinations stay unchanged. A source candidate must not replace pending tasks
 merely because its version text resembles an old release.
 
@@ -111,6 +114,26 @@ framing guard matches the bounded Worker reply transport.
 Initial failure evidence `p25-source-runner-d13772ef594643f896a6ad17e7e5a998`
 exposed a failure exit status overwritten by the pipe-close handler. The source
 runner now preserves failed status, and an unexpected supervisor EOF exits
-unsuccessfully. These tests do not yet exercise real Runtime storage, Worker
-process killing/takeover, native Session snapshots, provider billing, or a
-long-history memory plateau. No deployed runner has been switched.
+unsuccessfully. These repository-level tests do not exercise real Runtime storage,
+Worker process killing/takeover, native Session snapshots or provider billing;
+later integration evidence must be evaluated separately.
+
+## Long-history memory characterization
+
+Run `node benchmarks/source-memory.mjs <absolute-new-evidence-directory> 128,512,2048`
+with the fixed Node 24 build. The directory must not already exist. This imports
+the unchanged built kernel and source runner; it makes no provider or network
+calls and does not change a deployed release. A separate child observer samples
+heap and RSS through IPC after explicit GC. A bounded synthetic supervisor
+flushes a hash-linked transcript, then a fresh child replays its frozen replies
+and verifies every model/tool/state request's semantic hash. It is not a second
+production persistence implementation or a database restore acceptance.
+
+The initial Windows measurement found retained heap growth despite an unchanged
+8,192-token model window, fixed working set and repeated real DSH compaction.
+At 128 / 512 / 2,048 tool steps, end-of-run heap was 13.1 / 19.7 / 48.1 MiB;
+fresh-process transcript replay took 0.8 / 2.6 / 10.1 seconds. RSS is separate
+from V8 old-space: the configured 192 MiB old-space limit is not a process RSS
+cap. These are single-sample fixture measurements with GC instrumentation, not
+production latency percentiles or a bounded-memory pass. See
+[the retained-history decision](docs/resident-history-design.md).

@@ -14,5 +14,7 @@ deployment. A source build does not prove npm byte equivalence or bounded memory
 
 Use focused local tests and fixed dependencies. GitHub Actions remain disabled
 under the workspace cost policy; do not create commit-triggered workflows. The
-current source acquisition/build is preparation while P2 retirement checks remain
-open. Do not present it as completed persistence or an activated engine.
+source v1 was activated on Windows on 2026-10-13; the integration repository's
+source-engine-activation-20261013.md is the evidence authority. Later candidate
+changes are not deployed by editing this repository or rebuilding dist. P2
+retirement, bounded full history and cache cleanup remain open.
