@@ -5,14 +5,15 @@ import {createInterface} from 'node:readline';
 import {fileURLToPath} from 'node:url';
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 
 async function exerciseRunner(t, runner) {
   const env = {};
   for (const key of ['PATH', 'SystemRoot', 'WINDIR', 'TMP', 'TEMP']) {
     if (process.env[key]) env[key] = process.env[key];
   }
-  const child = spawn(process.execPath, ['--max-old-space-size=192', runner], {
-    env, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'],
+  const child = spawn(process.execPath, ['--no-global-search-paths', '--max-old-space-size=192', runner], {
+    cwd: path.dirname(runner), env, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'],
   });
   const exited = new Promise(resolve => {
     child.once('error', error => resolve({error}));
@@ -74,10 +75,20 @@ test('source DSH drives model, tool and final receipt through the platform bridg
 });
 
 test('relocated runtime needs neither source nor package manifests nor node_modules', {timeout: 15000}, async t => {
-  const root = fileURLToPath(new URL('../', import.meta.url));
-  const scratch = path.join(root, '.work');
+  const root = fs.realpathSync(fileURLToPath(new URL('../', import.meta.url)));
+  const scratch = process.env.HARNESS_TEST_ARTIFACT_ROOT || os.tmpdir();
   fs.mkdirSync(scratch, {recursive: true});
   const base = fs.realpathSync(scratch);
+  const relative = path.relative(root, base);
+  assert.ok(relative === '..' || relative.startsWith('..' + path.sep) || path.isAbsolute(relative),
+    'Artifact scratch directory must be outside the source checkout');
+  for (let ancestor = base; ; ancestor = path.dirname(ancestor)) {
+    for (const name of ['node_modules', 'package.json']) {
+      assert.equal(fs.existsSync(path.join(ancestor, name)), false,
+        `Artifact lookup ancestor contains ${name}: ${ancestor}`);
+    }
+    if (path.dirname(ancestor) === ancestor) break;
+  }
   const artifact = fs.mkdtempSync(path.join(base, 'runtime-'));
   t.after(() => {
     if (path.dirname(fs.realpathSync(artifact)) !== base) throw new Error('Scratch cleanup escaped its root');
@@ -89,5 +100,6 @@ test('relocated runtime needs neither source nor package manifests nor node_modu
   }
   fs.copyFileSync(path.join(root, 'runner.mjs'), path.join(artifact, 'runner.mjs'));
   assert.deepEqual(fs.readdirSync(artifact).sort(), ['dist', 'runner.mjs']);
+  t.diagnostic('Runtime copied outside checkout; dependency-free lookup ancestors, artifact cwd and disabled global module search');
   await exerciseRunner(t, path.join(artifact, 'runner.mjs'));
 });

@@ -27,7 +27,10 @@ its locked source manifest. Its original/transformed bytes, metadata and transfo
 script are hashed in the build manifest. Upstream files remain untouched. This
 avoids both reading the platform package's unrelated version and a missing-file
 failure when only runtime artifacts are deployed. Tests exercise that relocated
-artifact without source, package manifests or node_modules. The build's import
+artifact outside the checkout, with its own working directory, no package
+manifests or node_modules in its lookup ancestors, and global module search
+disabled. Set `HARNESS_TEST_ARTIFACT_ROOT` to an external scratch directory if
+the OS temporary directory has dependency-bearing ancestors. The build's import
 list alone cannot detect every runtime file lookup; it is not a confinement proof.
 
 The resulting kernel exports Cordis, Session, AgentLoop, tools, model interfaces,
