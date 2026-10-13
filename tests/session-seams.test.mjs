@@ -54,10 +54,13 @@ test('upstream surface compaction retains original events in session memory', as
   const second = append(session, 'Second original evidence '.repeat(128));
   // This probes the supported surface replacement primitive. It does not claim
   // to test an LLM summary, automatic compaction, a memory plateau or disk I/O.
-  session.append('user/message', {
+  const replacement = session.append('user/message', {
     message: createUserMessage({content:[{type:'text',text:'Compact fixture summary.'}],source:{kind:'user'}}),
   }, {surfaceOp:{op:'replace',startSeq:first.seq,endSeq:second.seq},sourceEventSeqs:[first.seq,second.seq]});
   const history = session.snapshotEvents();
+  assert.deepEqual(session.surface.nodes, [replacement.seq]);
+  assert.equal(history[replacement.seq].data.message.content[0].text, 'Compact fixture summary.');
+  assert.equal(session.surface.replaceGeneration, 1);
   assert.equal(history.length, 3);
   assert.equal(history[0].data.message.content[0].text, first.data.message.content[0].text);
   assert.equal(history[1].data.message.content[0].text, second.data.message.content[0].text);

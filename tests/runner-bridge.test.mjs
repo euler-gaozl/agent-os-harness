@@ -3,13 +3,15 @@ import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
 import {createInterface} from 'node:readline';
 import {fileURLToPath} from 'node:url';
+import fs from 'node:fs';
+import path from 'node:path';
 
-test('source DSH drives model, tool and final receipt through the platform bridge', {timeout: 15000}, async t => {
+async function exerciseRunner(t, runner) {
   const env = {};
   for (const key of ['PATH', 'SystemRoot', 'WINDIR', 'TMP', 'TEMP']) {
     if (process.env[key]) env[key] = process.env[key];
   }
-  const child = spawn(process.execPath, ['--max-old-space-size=192', fileURLToPath(new URL('../runner.mjs', import.meta.url))], {
+  const child = spawn(process.execPath, ['--max-old-space-size=192', runner], {
     env, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'],
   });
   const exited = new Promise(resolve => {
@@ -65,4 +67,27 @@ test('source DSH drives model, tool and final receipt through the platform bridg
   assert.ok(cursor > 0);
   assert.ok(eventTypes.has('turn/end'));
   assert.ok(eventTypes.has('assistant/message'));
+}
+
+test('source DSH drives model, tool and final receipt through the platform bridge', {timeout: 15000}, async t => {
+  await exerciseRunner(t, fileURLToPath(new URL('../runner.mjs', import.meta.url)));
+});
+
+test('relocated runtime needs neither source nor package manifests nor node_modules', {timeout: 15000}, async t => {
+  const root = fileURLToPath(new URL('../', import.meta.url));
+  const scratch = path.join(root, '.work');
+  fs.mkdirSync(scratch, {recursive: true});
+  const base = fs.realpathSync(scratch);
+  const artifact = fs.mkdtempSync(path.join(base, 'runtime-'));
+  t.after(() => {
+    if (path.dirname(fs.realpathSync(artifact)) !== base) throw new Error('Scratch cleanup escaped its root');
+    fs.rmSync(artifact, {recursive: true});
+  });
+  fs.mkdirSync(path.join(artifact, 'dist'));
+  for (const file of ['kernel.mjs', 'manifest.json', 'THIRD_PARTY_NOTICES.txt']) {
+    fs.copyFileSync(path.join(root, 'dist', file), path.join(artifact, 'dist', file));
+  }
+  fs.copyFileSync(path.join(root, 'runner.mjs'), path.join(artifact, 'runner.mjs'));
+  assert.deepEqual(fs.readdirSync(artifact).sort(), ['dist', 'runner.mjs']);
+  await exerciseRunner(t, path.join(artifact, 'runner.mjs'));
 });

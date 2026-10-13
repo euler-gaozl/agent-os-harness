@@ -2,9 +2,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import * as esbuild from 'esbuild';
 import {root, sha256, verifyUpstream} from './verify-upstream.mjs';
+import {inlinePackageVersion} from '../patches/inline-package-version.mjs';
 
 if (process.versions.node.split('.')[0] !== '24') throw new Error('Node 24 is required');
 const lock = verifyUpstream();
+const versionPatch = inlinePackageVersion(root, sha256);
 const built = await esbuild.build({
   absWorkingDir: root,
   entryPoints: ['src/kernel.ts'],
@@ -17,6 +19,7 @@ const built = await esbuild.build({
   metafile: true,
   write: false,
   outfile: 'dist/kernel.mjs',
+  plugins: [versionPatch.plugin],
 });
 const inputs = {};
 for (const file of Object.keys(built.metafile.inputs).sort()) {
@@ -57,6 +60,8 @@ const manifest = {
   kernel_sha256: sha256(body),
   kernel_bytes: body.length,
   notices_sha256: sha256(notices),
+  runner_sha256: sha256(fs.readFileSync(path.join(root, 'runner.mjs'))),
+  patches: [versionPatch.record],
   inputs,
 };
 fs.writeFileSync(path.join(root, 'dist/manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
