@@ -17,4 +17,7 @@ under the workspace cost policy; do not create commit-triggered workflows. The
 source v1 was activated on Windows on 2026-10-13; the integration repository's
 source-engine-activation-20261013.md is the evidence authority. Later candidate
 changes are not deployed by editing this repository or rebuilding dist. P2
-retirement, bounded full history and cache cleanup remain open.
+retirement, full memory/recovery acceptance and cache cleanup remain open.
+The resident-v2 core candidate is built separately under .work/resident-candidate;
+its local 19-test suite and fixed-history measurements do not authorize replacing
+v1 tasks or the production release. See docs/resident-history-design.md.

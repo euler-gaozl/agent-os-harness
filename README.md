@@ -44,14 +44,17 @@ authority. Importing a source package does not mount its capabilities.
 
 The source persistence/context implementation below has controlled protocol
 tests; actual Worker/Runtime and provider acceptance is recorded by the integration
-repository. Bounded Session history and cache cleanup remain open. Existing engine IDs and historical npm/runner
+repository. A separately built resident-history candidate is described below;
+its deployment, full memory/recovery acceptance and cache cleanup remain open.
+Existing engine IDs and historical npm/runner
 combinations stay unchanged. A source candidate must not replace pending tasks
 merely because its version text resembles an old release.
 
 ## Source persistence and working context candidate
 
-`source-runner.mjs` requires engine `dsh-source-639ed015-state-v1` and evidence
-protocol 1. It mounts the existing upstream loop plus `src/source-platform.ts`;
+The default `source-runner.mjs` build requires engine `dsh-source-639ed015-state-v1`
+and evidence protocol 1, using the engine exported by its pinned kernel.
+It mounts the existing upstream loop plus `src/source-platform.ts`;
 `runner.mjs` remains the unchanged historical characterization adapter. The
 build manifest separately hashes both runners and declares the source engine.
 There is no native JSONL journal, database connection, provider key or second
@@ -137,3 +140,23 @@ from V8 old-space: the configured 192 MiB old-space limit is not a process RSS
 cap. These are single-sample fixture measurements with GC instrumentation, not
 production latency percentiles or a bounded-memory pass. See
 [the retained-history decision](docs/resident-history-design.md).
+
+## Resident-history candidate (not deployed)
+
+`pnpm build:resident` and `pnpm test:resident` build and check
+`dsh-source-639ed015-resident-v2` under `.work/resident-candidate`. The seven
+manifested core transforms keep absolute event positions and release unneeded
+resident history only after an archive acknowledgement and consumer checks.
+They retain upstream AgentLoop and the unchanged source runner. This fixed
+text-only profile rejects unsupported projection definitions and late plugins.
+It does not overwrite the v1 build or select a new production default.
+
+To measure it, run
+`node benchmarks/source-memory.mjs <absolute-new-evidence-directory> 128,512,2048,4096 <absolute-repo>/.work/resident-candidate`.
+Final local evidence has 19 candidate and 16 historical tests passing with no
+skips. At 2,048 steps, recorded final heap was 11,425,952 bytes versus v1's
+50,417,120; at 4,096 steps the candidate completed recording and replay with
+approximately 12.8 MB final heap. RSS remains larger, and full replay still takes
+22.6 seconds at 4,096 steps. These are forced-GC fixture measurements, not
+production latency or a bound on all caches. See the decision document for exact
+hashes, failure evidence, limitations and pending Worker/Runtime integration.

@@ -1,6 +1,7 @@
 // Test-only observer. The deployed runner and kernel are imported unchanged.
 // Samples are sent over a separate IPC channel, never added to bridge frames.
 import {performance} from 'node:perf_hooks';
+import {pathToFileURL} from 'node:url';
 
 if (!global.gc || !process.send) throw new Error('memory probe requires --expose-gc and IPC');
 const stride = Number(process.argv[2]);
@@ -24,4 +25,4 @@ process.stdout.write = function (chunk, ...args) {
   }
   return write(chunk, ...args);
 };
-await import('../source-runner.mjs');
+await import(process.argv[3] ? pathToFileURL(process.argv[3]).href : '../source-runner.mjs');

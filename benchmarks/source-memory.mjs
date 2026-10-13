@@ -14,10 +14,11 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 const childFile = fileURLToPath(new URL('./source-memory-child.mjs', import.meta.url));
 const hash = value => createHash('sha256').update(value).digest('hex');
 const encode = value => JSON.stringify(value);
-const manifest = JSON.parse(fs.readFileSync(path.join(root, 'dist/manifest.json')));
+const runtimeRoot = process.argv[4] ? fs.realpathSync(process.argv[4]) : root;
+const manifest = JSON.parse(fs.readFileSync(path.join(runtimeRoot, 'dist/manifest.json')));
 for (const [file, digest] of [['dist/kernel.mjs',manifest.kernel_sha256],
   ['source-runner.mjs',manifest.source_runner_sha256]]) {
-  assert.equal(hash(fs.readFileSync(path.join(root,file))),digest,'built artifact mismatch');
+  assert.equal(hash(fs.readFileSync(path.join(runtimeRoot,file))),digest,'built artifact mismatch');
 }
 const out = process.argv[2];
 const steps = (process.argv[3] || '128,512,2048').split(',').map(Number);
@@ -46,7 +47,7 @@ async function execute(count, replay) {
   for (const name of ['SystemRoot','WINDIR','TMP','TEMP']) if(process.env[name]) env[name]=process.env[name];
   const started = performance.now();
   const child = spawn(process.execPath,['--no-global-search-paths','--max-old-space-size=192',
-    '--expose-gc',childFile,String(stride)],{cwd:root,env,windowsHide:true,stdio:['pipe','pipe','pipe','ipc']});
+    '--expose-gc',childFile,String(stride),path.join(runtimeRoot,'source-runner.mjs')],{cwd:runtimeRoot,env,windowsHide:true,stdio:['pipe','pipe','pipe','ipc']});
   const exit = new Promise(resolve => {child.once('error',error=>resolve({error:String(error)}));
     child.once('close',(code,signal)=>resolve({code,signal}));});
   const summary = {label,completed:false,fixture:true,steps:count,frames:0,events:0,event_bytes:0,
