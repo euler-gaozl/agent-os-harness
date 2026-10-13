@@ -26,7 +26,7 @@ for (const file of Object.keys(built.metafile.inputs).sort()) {
   const absolute = path.resolve(root, file);
   const relative = path.relative(root, absolute).replaceAll('\\', '/');
   if (relative.startsWith('../') || path.isAbsolute(relative)) throw new Error('Build input outside repository');
-  if (!relative.startsWith('upstream/') && relative !== 'src/kernel.ts' && !relative.startsWith('node_modules/')) {
+  if (!relative.startsWith('upstream/') && !['src/kernel.ts','src/source-platform.ts'].includes(relative) && !relative.startsWith('node_modules/')) {
     throw new Error(`Unexpected kernel build input: ${relative}`);
   }
   if (relative.startsWith('node_modules/') && !relative.includes('/zod/')) throw new Error(`Unapproved kernel dependency: ${relative}`);
@@ -61,6 +61,8 @@ const manifest = {
   kernel_bytes: body.length,
   notices_sha256: sha256(notices),
   runner_sha256: sha256(fs.readFileSync(path.join(root, 'runner.mjs'))),
+  source_engine: 'dsh-source-639ed015-state-v1',
+  source_runner_sha256: sha256(fs.readFileSync(path.join(root, 'source-runner.mjs'))),
   patches: [versionPatch.record],
   inputs,
 };

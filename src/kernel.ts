@@ -8,3 +8,4 @@ export {default as Prompt} from '@deepseek-ai/dsh-system-prompt';
 export {default as Projection} from '@deepseek-ai/dsh-session-projection';
 export {default as TokenMeter} from '@deepseek-ai/dsh-token-meter';
 export {default as Compaction} from '@deepseek-ai/dsh-compaction-basic';
+export {SOURCE_ENGINE,WORKING_CONTEXT_MARKER,SourcePersistence,WorkingStateTool,workingContext} from './source-platform';
