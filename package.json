@@ -12,7 +12,9 @@
     "build:resident": "node scripts/build-resident.mjs",
     "test:resident": "node scripts/test-resident.mjs",
     "build:budget": "node scripts/build-budget.mjs",
-    "test:budget": "node --test tests/budget/*.test.mjs"
+    "test:budget": "node --test tests/budget/*.test.mjs",
+    "build:native": "node scripts/build-native.mjs",
+    "test:native": "node --test tests/native/*.test.mjs"
   },
   "devDependencies": {
     "esbuild": "0.28.2",
