@@ -1,162 +1,56 @@
 # Agent OS Harness
 
-Source-owned DSH kernel for the platform Worker. On 2026-10-13 the Windows
-installation activated `dsh-source-639ed015-state-v1` from `ec21432` / tag
-`v0.1.0-rc.1`. The integration repository records actual model, release and restore
-evidence in `docs/source-engine-activation-20261013.md`. Historical engines stay
-pinned. Activation does not establish bounded Session memory or complete delivery.
+从固定的 DeepSeek Harness（DSH）官方源码构建 Agent 内核，并维护平台的持久化与上下文适配。AgentLoop 仍由 DSH 执行；Go Worker 负责实际模型/工具传输，Runtime 是租约、回执、检查点和工作状态的持久化权威。
 
-The upstream tag `dsh-v0.2.0-rc.2` resolves to
-`639ed015397290b3745d163aafe02ffee4aa3f84`. `upstream-lock.json` records the
-official archive hash and every imported file. Twenty-one complete source
-package directories cover the kernel dependency graph; the official CLI,
-desktop app, Web, Python SDK and unrelated services are not imported. Upstream
-code and MIT notices remain unchanged under `upstream/`. This establishes a
-source baseline, not byte equivalence to the published npm artifacts.
+## 源码来源与版本
 
-Install fixed build dependencies with `pnpm install --frozen-lockfile --ignore-scripts`.
-Use Node 24, then `pnpm build` and `pnpm test`. The build verifies all upstream
-file hashes, compiles the actual TypeScript source and rejects imports outside
-this checkout or external runtime dependencies other than Node built-ins.
-`dist/manifest.json` binds the source/dependency locks, build tool, input hashes
-and output digest. Dependencies are esbuild and Zod, not prebuilt DSH npm packages.
-The existing Worker runner's bridge and the Session interface checks are retained
-as baseline characterization; source compilation alone is not type checking of
-the complete upstream monorepo or comprehensive behavioral compatibility.
+上游 `dsh-v0.2.0-rc.2` 固定到 `639ed015397290b3745d163aafe02ffee4aa3f84`。[upstream-lock.json](upstream-lock.json) 记录官方压缩包及每个导入文件哈希；导入内核依赖图涉及的 21 个完整包目录，不包含官方 CLI、桌面端、Web、Python SDK 或其他无关服务。
 
-One packaging transform in `patches/inline-package-version.mjs` replaces the
-LLM attribution module's runtime `../package.json` read with the version from
-its locked source manifest. Its original/transformed bytes, metadata and transform
-script are hashed in the build manifest. Upstream files remain untouched. This
-avoids both reading the platform package's unrelated version and a missing-file
-failure when only runtime artifacts are deployed. Tests exercise that relocated
-artifact outside the checkout, with its own working directory, no package
-manifests or node_modules in its lookup ancestors, and global module search
-disabled. Set `HARNESS_TEST_ARTIFACT_ROOT` to an external scratch directory if
-the OS temporary directory has dependency-bearing ancestors. The build's import
-list alone cannot detect every runtime file lookup; it is not a confinement proof.
+`upstream/` 保留原始字节和 MIT 声明，平台代码放 `src/`，明确的构建变换放 `patches/`。同版本源码不等于与 npm 发布产物字节一致，也不能据此认定历史任务可直接换引擎。
 
-The resulting kernel exports Cordis, Session, AgentLoop, tools, model interfaces,
-projection and compaction. `runner.mjs` explicitly mounts the platform subset.
-Node receives no provider key or database login. The Go Worker remains responsible
-for recorded model/tool transport, leases and receipts; Runtime is the durable
-authority. Importing a source package does not mount its capabilities.
+2026-10-13 Windows 已激活由 `ec21432` / `v0.1.0-rc.1` 构建的 `dsh-source-639ed015-state-v1`；真实模型、发布与恢复记录在 [源码引擎激活验收](https://github.com/euler-gaozl/agent-os/blob/main/docs/source-engine-activation-20261013.md)。后续候选不会因本仓重建而自动上线。
 
-The source persistence/context implementation below has controlled protocol
-tests; actual Worker/Runtime and provider acceptance is recorded by the integration
-repository. A separately built resident-history candidate is described below;
-its deployment, full memory/recovery acceptance and cache cleanup remain open.
-Existing engine IDs and historical npm/runner
-combinations stay unchanged. A source candidate must not replace pending tasks
-merely because its version text resembles an old release.
+## 构建与产物
 
-## Source persistence and working context candidate
+需要 Node 24 和固定 pnpm 依赖。
 
-The default `source-runner.mjs` build requires engine `dsh-source-639ed015-state-v1`
-and evidence protocol 1, using the engine exported by its pinned kernel.
-It mounts the existing upstream loop plus `src/source-platform.ts`;
-`runner.mjs` remains the unchanged historical characterization adapter. The
-build manifest separately hashes both runners and declares the source engine.
-There is no native JSONL journal, database connection, provider key or second
-decision loop in the Node process.
+```powershell
+pnpm install --frozen-lockfile --ignore-scripts
+pnpm build
+pnpm test
+```
 
-The persistence participant captures the session's construction prefix once,
-then serializes `session/event` additions into a queue capped at 16 MiB. Flush
-uses the existing durable Exchange transport, releases only confirmed events,
-and retains events appended while an acknowledgement is pending. Every flush
-produces a checkpoint, including empty batches, so regenerated event counts
-cannot silently change replay frame ordering. Queued failures are sticky because
-upstream contains post-append observer errors. Subsequent flush/model/tool/finish
-operations must observe the failure. This bounds the **transport buffer**, not
-the upstream Session's full in-memory history or maximum process RSS.
+构建逐个校验上游文件，编译真实 TypeScript，拒绝仓库外导入和 Node 内建之外的运行时外部依赖。`dist/manifest.json` 固定源码/依赖锁、构建工具、输入和产物哈希；构建依赖是 esbuild/Zod，不使用预编译 DSH npm 内核。
 
-Automatic compaction uses the supported `compactRegion` override to flush after
-the complete replacement and end marker. Every external model/tool/state/final
-operation also awaits Session.flush. This second check blocks an effect even
-when upstream catches a failed automatic-compaction flush and attempts to
-continue. Checkpoint RPC is a lower-level operation that does not recursively
-call flush. Unacknowledged in-memory events must not be described as saved.
+`patches/inline-package-version.mjs` 将上游归因模块的运行时 package.json 读取变成固定版本值，原始/变换字节及脚本都进入清单；原文件不变。测试把产物移到无 node_modules/package.json 祖先的目录并禁用全局搜索；可用 `HARNESS_TEST_ARTIFACT_ROOT` 指定外部临时目录。导入列表验证不构成完整文件系统隔离证明。
 
-Each prompt assembly obtains a frozen `working_state_read` response. A fixed
-format-1 projection includes the read operation ID, original task, read-time
-constraints, revisions/staleness and complete working set. The source receipt
-references stay in the working set; duplicate evidence SHA lists remain in the
-full Runtime response and are omitted from model input. A new read ID forces a
-fresh logged runtime-context snapshot even if state contents did not change:
-assembly happens before automatic compaction could remove the prior snapshot.
-Template variables substitute the JSON literally, so quoted `{{...}}` is never
-rendered as another template. Static system instructions classify working-set
-text as untrusted derived data, not authority to change the user task or rules.
+## 落盘、工作集与 Compact
 
-`working_state_update` is a reserved native DSH tool routed through the dedicated
-Runtime protocol, never ToolHub's generic tool endpoint. A configured tool cannot
-shadow it. Runtime owns source validation, CAS and atomic success/rejection
-responses. Changes in this runner's frame ordering or projection semantics need
-a new engine ID after activation; matching an upstream version is insufficient.
+- 每个 session 的构造前缀只收集一次，后续事件排入最大 16 MiB 的传输队列，通过持久化 Exchange flush。只释放已确认事件，等待确认时新增的事件不丢失；空批次也有检查点，保持重放帧顺序。
+- flush 失败保持失败状态，后续模型、工具、状态更新和结束操作必须先通过 flush。自动 Compact 完成替换和结束标记后也 flush；即使上游吞掉观察器错误，后续外部动作仍被屏障阻止。
+- 每次普通提示词组装读取冻结的工作状态，包含原始任务、当时约束、修订/过期标记和完整工作集。引用文字以字面 JSON 注入，不能展开成模板或覆盖用户指令。
+- `working_state_update` 是保留的 DSH 原生工具，经专用 Runtime 协议执行，不能被配置工具遮蔽。Runtime 负责验证、CAS 和成功/拒绝回执。
+- Compact 只总结收到的片段，下一次普通请求重新读取权威工作状态，避免摘要遗漏重要事实。上下文估算是启发式，最终供应商请求仍需 Worker 校验。
 
-The normal provider path requires the latest projection in the logged messages
-and estimates the **materialized DSH request**, including tools and reserved
-output. Working sets are not injected invisibly at provider time. Compaction
-summarizes only its supplied surface, without an extra state read; the next
-normal request receives the fresh frozen state even if the summary omits it.
-The estimator is heuristic. Runtime's later authoritative constraints prefix
-and final provider payload still require coordinated Worker budget validation;
-this Node-only check does not establish that end-to-end invariant.
+Node 没有模型 Key、数据库账号、宿主执行工具、原生 JSONL 日志或第二套本地会话写入器。16 MiB 只约束传输队列，**不代表上游 Session 历史或进程 RSS 有界**。影响重放的顺序/投影变化必须使用新引擎版本。
 
-Tests use real Node and source-built DSH with a synthetic supervisor/model/state
-protocol. They cover buffer failure/ack ordering, complete loop tool/state flow,
-fresh-process replay, real automatic compaction with intentionally omitted
-facts, post-compaction checkpoint failure, literal hostile quoted text and
-isolated artifact execution. A legal near-limit task, escaped text and a
-256-source working set remain usable and replayable with a sufficient configured
-window; low-window overflow stops before provider invocation without truncation.
-The earlier arbitrary 64 KiB projection cap was removed after independent review
-found it could reject otherwise valid Runtime state. The remaining 4 MiB plus
-framing guard matches the bounded Worker reply transport.
+## 长历史内存与 resident-v2 候选
 
-Initial failure evidence `p25-source-runner-d13772ef594643f896a6ad17e7e5a998`
-exposed a failure exit status overwritten by the pipe-close handler. The source
-runner now preserves failed status, and an unexpected supervisor EOF exits
-unsuccessfully. These repository-level tests do not exercise real Runtime storage,
-Worker process killing/takeover, native Session snapshots or provider billing;
-later integration evidence must be evaluated separately.
+```powershell
+node benchmarks/source-memory.mjs <新的绝对证据目录> 128,512,2048
+pnpm build:resident
+pnpm test:resident
+node benchmarks/source-memory.mjs <另一个新证据目录> 128,512,2048,4096 <仓库绝对路径>/.work/resident-candidate
+```
 
-## Long-history memory characterization
+基准使用固定 Node、合成模型/状态协议、实际 DSH Compact 和新进程重放，不访问供应商。v1 在 128/512/2,048 步后的堆内存约 13.1/19.7/48.1 MiB，模型窗口不变仍增长。192 MiB V8 old-space 上限不是进程 RSS 上限。
 
-Run `node benchmarks/source-memory.mjs <absolute-new-evidence-directory> 128,512,2048`
-with the fixed Node 24 build. The directory must not already exist. This imports
-the unchanged built kernel and source runner; it makes no provider or network
-calls and does not change a deployed release. A separate child observer samples
-heap and RSS through IPC after explicit GC. A bounded synthetic supervisor
-flushes a hash-linked transcript, then a fresh child replays its frozen replies
-and verifies every model/tool/state request's semantic hash. It is not a second
-production persistence implementation or a database restore acceptance.
+`dsh-source-639ed015-resident-v2` 在单独目录构建，七个显式内核变换保持绝对事件位置，只在归档确认和消费者检查后释放不再需要的常驻历史；保留上游 AgentLoop 与固定 source runner，拒绝不支持的投影/迟到插件，不覆盖 v1。
 
-The initial Windows measurement found retained heap growth despite an unchanged
-8,192-token model window, fixed working set and repeated real DSH compaction.
-At 128 / 512 / 2,048 tool steps, end-of-run heap was 13.1 / 19.7 / 48.1 MiB;
-fresh-process transcript replay took 0.8 / 2.6 / 10.1 seconds. RSS is separate
-from V8 old-space: the configured 192 MiB old-space limit is not a process RSS
-cap. These are single-sample fixture measurements with GC instrumentation, not
-production latency percentiles or a bounded-memory pass. See
-[the retained-history decision](docs/resident-history-design.md).
+本地候选 19 项、历史 16 项测试通过且未跳过；2,048 步最终堆约 11.4 MB，4,096 步约 12.8 MB，但 RSS 更大、完整重放约 22.6 秒。这是强制 GC 的单次夹具测量，不代表生产延迟、全部缓存或快速原生恢复已验收。详见 [常驻历史设计](docs/resident-history-design.md)。
 
-## Resident-history candidate (not deployed)
+## 当前未完成项
 
-`pnpm build:resident` and `pnpm test:resident` build and check
-`dsh-source-639ed015-resident-v2` under `.work/resident-candidate`. The seven
-manifested core transforms keep absolute event positions and release unneeded
-resident history only after an archive acknowledgement and consumer checks.
-They retain upstream AgentLoop and the unchanged source runner. This fixed
-text-only profile rejects unsupported projection definitions and late plugins.
-It does not overwrite the v1 build or select a new production default.
+真实研究仍暴露最终上下文拒绝、家族预算预留及 runner 固定输出上限问题；新的修复版本尚待实现和恢复验收。resident-v2 未正式启用，完整内存/恢复、缓存生命周期及平台交付仍未完成。Actions 日常关闭。
 
-To measure it, run
-`node benchmarks/source-memory.mjs <absolute-new-evidence-directory> 128,512,2048,4096 <absolute-repo>/.work/resident-candidate`.
-Final local evidence has 19 candidate and 16 historical tests passing with no
-skips. At 2,048 steps, recorded final heap was 11,425,952 bytes versus v1's
-50,417,120; at 4,096 steps the candidate completed recording and replay with
-approximately 12.8 MB final heap. RSS remains larger, and full replay still takes
-22.6 seconds at 4,096 steps. These are forced-GC fixture measurements, not
-production latency or a bound on all caches. See the decision document for exact
-hashes, failure evidence, limitations and pending Worker/Runtime integration.
+[历史详细记录](docs/history/service-notes-20261014.en.md) 保留失败证据、测试范围和不可外推的结论；生产状态以集成仓库为准。
