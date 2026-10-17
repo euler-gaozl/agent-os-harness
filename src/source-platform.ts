@@ -1,7 +1,7 @@
 import type {Context} from '@deepseek-ai/cordis';
 import type {Session, SessionEvent} from '@deepseek-ai/dsh-session';
 
-export const SOURCE_ENGINE = 'dsh-source-639ed015-state-v1';
+export const SOURCE_ENGINE = 'dsh-source-687f282e-state-v1';
 export const WORKING_CONTEXT_MARKER = 'AGENTOS_WORKING_STATE_V1\n';
 const MAX_BATCH_BYTES = 16 << 20;
 

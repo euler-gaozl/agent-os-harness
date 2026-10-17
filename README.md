@@ -20,7 +20,7 @@ v7 是**候选，尚未安装**。本地 31 项检查通过：真实 DSH/Node �
 
 ## 源码来源与版本
 
-上游 `dsh-v0.2.0-rc.2` 固定到 `639ed015397290b3745d163aafe02ffee4aa3f84`。[upstream-lock.json](upstream-lock.json) 记录官方压缩包及每个导入文件哈希；导入内核依赖图涉及的 21 个完整包目录，不包含官方 CLI、桌面端、Web、Python SDK 或其他无关服务。
+上游 `dsh-v0.2.1-rc.2` 固定到 `687f282e8625c6b8d11ff58211a90524be2e4317`。[upstream-lock.json](upstream-lock.json) 记录官方压缩包及每个导入文件哈希；导入内核依赖图涉及的 21 个完整包目录，不包含官方 CLI、桌面端、Web、Python SDK 或其他无关服务。新内核的候选引擎名为 `dsh-source-687f282e-*`；它**尚未安装**，当前平台仍使用旧 `639ed015` 引擎以保留历史任务重放。
 
 `upstream/` 保留原始字节和 MIT 声明，平台代码放 `src/`，明确的构建变换放 `patches/`。同版本源码不等于与 npm 发布产物字节一致，也不能据此认定历史任务可直接换引擎。
 

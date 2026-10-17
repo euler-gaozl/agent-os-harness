@@ -2,4 +2,4 @@ export {Context,Llm,LlmAdapter,BlockAssembler,createUserMessage,Session,Agents,A
   Tools,Prompt,Projection,TokenMeter,Compaction,WORKING_CONTEXT_MARKER,WorkingStateTool,
   workingContext,SourcePersistence,ResidentEventLog} from './resident-kernel';
 export {budgetConfig,budgetModelReply} from './budget-protocol';
-export const SOURCE_ENGINE='dsh-source-639ed015-budget-v3';
+export const SOURCE_ENGINE='dsh-source-687f282e-budget-v3';

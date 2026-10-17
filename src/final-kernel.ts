@@ -4,4 +4,4 @@ export {Context,Llm,LlmAdapter,BlockAssembler,createUserMessage,Session,Agents,A
 export {nativeConfig,nativeModelReply,assertNativeSummary} from './native-protocol';
 export {FINAL_OUTPUT_TOOL,FinalOutputTool,FinalTurnSelection,finalOutputPolicy,
   selectionReceipt,assertFinalCallBatch,finalOutputArgs} from './final-protocol';
-export const SOURCE_ENGINE='dsh-source-639ed015-final-v5';
+export const SOURCE_ENGINE='dsh-source-687f282e-final-v5';

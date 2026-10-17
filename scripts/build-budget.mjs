@@ -29,7 +29,7 @@ const notices=[fs.readFileSync(path.join(root,'upstream/LICENSE'),'utf8')];
 for(const pkg of lock.packages){const file=path.join(root,'upstream',pkg.path,'LICENSE');if(fs.existsSync(file))notices.push(pkg.name,fs.readFileSync(file,'utf8'))}
 notices.push('zod 4.6.5',fs.readFileSync(path.join(root,'node_modules/zod/LICENSE'),'utf8'));
 const noticeText=notices.join('\n\n')+'\n',body=built.outputFiles[0].contents;
-const manifest={format:1,candidate_only:true,source_engine:'dsh-source-639ed015-budget-v3',model_receipt_protocol:1,
+const manifest={format:1,candidate_only:true,source_engine:'dsh-source-687f282e-budget-v3',model_receipt_protocol:1,
   upstream_commit:lock.commit,upstream_lock_sha256:sha256(fs.readFileSync(path.join(root,'upstream-lock.json'))),
   dependency_lock_sha256:sha256(fs.readFileSync(path.join(root,'pnpm-lock.yaml'))),
   esbuild:esbuild.version,target:'node24',kernel_sha256:sha256(body),kernel_bytes:body.length,

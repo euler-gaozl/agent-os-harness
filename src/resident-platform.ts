@@ -1,6 +1,6 @@
 import {SourcePersistence as BasePersistence} from './source-platform';
 
-export const SOURCE_ENGINE='dsh-source-639ed015-resident-v2';
+export const SOURCE_ENGINE='dsh-source-687f282e-resident-v2';
 
 // Same recorded bridge schedule as v1. Only a verified checkpoint response may
 // trigger release, using the batch's captured end rather than the later live tail.
