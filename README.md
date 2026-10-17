@@ -1,6 +1,14 @@
 # Agent OS Harness
 
-## guarded-v6 参数校验候选
+## guarded-v7 未就绪成稿单次续接候选
+
+`pnpm build:guarded` / `pnpm test:guarded` 构建及验证独立的 `dsh-source-639ed015-guarded-v7`。v7 在 v6 的工具参数校验和回执成稿之上，记录 Runtime 返回的**可修订** `selected:false` 拒绝；若模型以普通正文结束该轮，runner 只续接一次，把 Runtime 的 `continue` 和“不得以自由正文结束、修订后重新送检”的固定说明交回同一 DSH loop。第二次仍无成稿选择则明确失败，不增加 harness 重试计数或第二个决策循环；Runtime 的尝试/步骤预算仍是唯一预算权威。
+
+v7 是**候选，尚未安装**。本地 31 项检查通过：真实 DSH/Node 配合合成宿主，新增“拒绝选择后文本结束 → 一次续接 → 重新检查并成功”和“第二次文本结束即终止、不死循环”用例，并保留原有坏参数、落盘、远端错误、强杀重放及 v6 无策略降级用例。没有真实供应商调用、没有 Runtime/Worker/Console 准入或发布。下面 guarded-v6 段落是已安装历史候选；从本提交起 `build:guarded` 产出 v7，v6 产物仍保留在历史提交和发布包中。
+
+旧 v6 部署与语义不变。v7 进入 Runtime/Worker/Console 需要新引擎准入、双产物或明确回退、发布/回滚守卫和独立故障/重放验收；本仓构建成功不代表这些已完成。
+
+## guarded-v6 参数校验（历史候选）
 
 `pnpm build:guarded` / `pnpm test:guarded` 构建及验证独立的 `dsh-source-639ed015-guarded-v6`。绑定工具、工作状态与原文交付工具均在 RPC 前按冻结 JSON Schema 校验；参数无效由 DSH 返回普通工具错误，允许模型纠正。不会夹紧分页、转换类型或代改参数；RPC、权限、未知效果及落盘失败仍保持原有失败屏障。
 

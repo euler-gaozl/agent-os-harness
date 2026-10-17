@@ -301,6 +301,8 @@ agent.followup(
     source: { kind: "user" },
   }),
 );
+let rejectionContinued = false;
+let lastRejection = null;
 while (true) {
   await agent.whenIdle();
   persistence.assertHealthy();
@@ -309,7 +311,27 @@ while (true) {
   if (finalPolicy) {
     const selected = finalTurn.completed(end);
     if (!selected) {
-      await rpc('failed',{error:'DSH turn did not end with a successful final output selection'});
+      const rejection = finalTurn.rejected(end);
+      if (rejection) lastRejection = rejection;
+      if (rejection && !rejectionContinued) {
+        // The business layer rejected a specific, revisable candidate. Give
+        // the model one corrective turn in the same DSH loop; do not add a
+        // second decision loop or a harness-owned retry counter. Runtime's
+        // attempt and step limits remain the only budget authority.
+        rejectionContinued = true;
+        finalTurn.clear();
+        agent.followup(createUserMessage({
+          content: [{type: 'text', text:
+            `${rejection.continue}\nThe final selection was not committed. Do not return the report as free text. ` +
+            'Revise the latest candidate, submit it to the checker, and call final_output_commit alone again only when it is ready. ' +
+            'If the evidence cannot support a delivered report, end with an explicit failure; do not claim a budget limit unless the executor reports one.'}],
+          source: {kind: 'user'},
+        }));
+        continue;
+      }
+      await rpc('failed',{error: lastRejection ?
+        'DSH turn ended after a rejected final output selection without a committed selection' :
+        'DSH turn did not end with a successful final output selection'});
       process.exitCode = 1;
       break;
     }

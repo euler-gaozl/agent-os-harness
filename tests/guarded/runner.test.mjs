@@ -17,7 +17,8 @@ const envelope=(message,pressure=false)=>({format:2,kind:'completion',message,
 
 // Real DSH/Node process, synthetic supervisor. Runtime SQL is a separate gate.
 async function drive(t,{replay=[],killPoint,killAfterReply=false,mixed=false,noPolicy=false,
-  directText=false,rejectSelect=false,malformedSelect=false,rejectFinish=false,badArguments=false,
+  directText=false,rejectSelect=false,rejectSelectAlways=false,textAfterReject=false,textAfterSecondReject=false,
+  malformedSelect=false,rejectFinish=false,badArguments=false,
   failResultFlush=false,history=0,pressure=false,badToolArgs=false,remoteToolError=false}={}) {
   const env={};for(const key of ['PATH','SystemRoot','WINDIR','TMP','TEMP'])if(process.env[key])env[key]=process.env[key];
   const child=spawn(process.execPath,['--no-global-search-paths','--max-old-space-size=512',entry],
@@ -35,7 +36,7 @@ async function drive(t,{replay=[],killPoint,killAfterReply=false,mixed=false,noP
     ]});
   const saved=[],events=[];
   let sequence=0,cursor=0,generations=0,summaries=0,reads=0,checks=0,selects=0,finishes=0,newModels=0;
-  let candidate,chosen,finished=false,failed=false,killed=false,barrier=false,last='start';
+  let candidate,chosen,finished=false,failed=false,killed=false,barrier=false,last='start',rejectionTextSent=false;
   for await(const line of createInterface({input:child.stdout})) {
     const f=JSON.parse(line);
     assert.equal(f.id,++sequence);assert.equal(f.event_start,cursor);assert.equal(f.event_end,cursor+f.events.length);
@@ -63,6 +64,8 @@ async function drive(t,{replay=[],killPoint,killAfterReply=false,mixed=false,noP
       else if(noPolicy||directText||malformedSelect&&selects>0)result=envelope({role:'assistant',content:'Ordinary answer'});
       else if(badToolArgs&&reads===0) result=envelope({role:'assistant',content:'',tool_calls:[call('page-'+generations,'read_evidence',{limit:generations===1?2400:1200})]});
       else if(reads<history) result=envelope({role:'assistant',content:'',tool_calls:[call(`read-${reads}`,'read_evidence',{})]},pressure&&reads===history-1);
+      else if(last==='reject-select'&&textAfterSecondReject&&selects>=2)result=envelope({role:'assistant',content:'The report is below as free text instead of a committed selection.'});
+      else if(last==='reject-select'&&textAfterReject&&!rejectionTextSent){rejectionTextSent=true;result=envelope({role:'assistant',content:'The report is below as free text instead of a committed selection.'});}
       else if(last==='start'||last==='read'||last==='reject-select'||last==='reject-finish')
         result=envelope({role:'assistant',content:'',tool_calls:[call(`check-${checks}`,'check_draft',{draft})]});
       else {
@@ -79,7 +82,8 @@ async function drive(t,{replay=[],killPoint,killAfterReply=false,mixed=false,noP
       else result=JSON.stringify({result:'Original evidence. '.repeat(5000),receipt:{operation_id:op,committed:true}});
     } else if(f.method==='final_output_select') {
       assert.equal(f.params.operation_id,candidate.operation_id);assert.equal(f.params.sha256,candidate.sha256);
-      result=rejectSelect&&selects===0?{selected:false,continue:'Recheck the candidate under current constraints.'}:
+      const reject=(rejectSelect||rejectSelectAlways)&&(rejectSelectAlways||selects===0);
+      result=reject?{selected:false,continue:'Recheck the candidate under current constraints.'}:
         {selected:true,selection_id:`final-fixture/dsh/${f.id}`,operation_id:candidate.operation_id,
           sha256:malformedSelect?'wrong':candidate.sha256,policy_sha256:'d'.repeat(64),rule_revision:1};
     } else if(f.method==='finish_ref') {
@@ -127,6 +131,18 @@ for(const mixed of ['before','after'])test(`mixed commit batch rejects ${mixed} 
 });
 test('rejected selection remains in the official loop and requires a new check',{timeout:20000},async t=>{
   const a=await drive(t,{rejectSelect:true});assert.equal(a.finished,true);assert.equal(a.selects,2);assert.equal(a.checks,2);
+});
+test('a text-only turn after a rejected selection gets one corrective continuation',{timeout:20000},async t=>{
+  const a=await drive(t,{rejectSelect:true,textAfterReject:true});
+  assert.equal(a.finished,true,a.stderr);assert.equal(a.selects,2);assert.equal(a.checks,2);
+  const b=await drive(t,{rejectSelect:true,textAfterReject:true,replay:a.saved});
+  assert.equal(b.finished,true,b.stderr);assert.equal(b.newModels,0);
+});
+test('a second text-only turn after a rejection terminates instead of looping',{timeout:20000},async t=>{
+  const a=await drive(t,{rejectSelectAlways:true,textAfterSecondReject:true});
+  assert.equal(a.finished,false);assert.equal(a.failed,true);assert.equal(a.selects,2);assert.equal(a.checks,2);
+  const failure=a.saved.find(x=>x.frame.method==='failed');
+  assert.match(failure.frame.params.error,/rejected final output selection without a committed selection/);
 });
 test('malformed model arguments can be corrected through the official tool loop',{timeout:20000},async t=>{
   const a=await drive(t,{badArguments:true});assert.equal(a.finished,true,a.stderr);assert.equal(a.selects,1);assert.equal(a.generations,3);

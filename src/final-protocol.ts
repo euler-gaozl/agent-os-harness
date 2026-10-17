@@ -67,12 +67,22 @@ export function finalOutputArgs(args: any, runID: string): any {
 export class FinalTurnSelection {
   private call: any = null;
   private selection: any = null;
+  private rejection: any = null;
   private failure: Error | null = null;
   constructor(private runID: string) {}
   observe(event: any): void {
     if (this.failure) return;
     try {
-      if (event.type === 'turn/start' || event.type === 'assistant/attempt') this.clear();
+      if (event.type === 'turn/start') {
+        this.call = null;
+        this.selection = null;
+        this.rejection = null;
+      }
+      if (event.type === 'assistant/attempt') {
+        // A new attempt invalidates an in-memory selection, but a rejection
+        // from the same turn remains actionable until the turn ends.
+        this.clear();
+      }
       if (event.type === 'assistant/message') {
         this.clear();
         const calls = event.data.message.content.filter((b: any) => b.type === 'tool-call');
@@ -83,6 +93,7 @@ export class FinalTurnSelection {
           try { args = JSON.parse(calls[0].arguments); } catch { return; }
           this.call = {id: calls[0].id, args,
             turn: event.data.turn, step: event.data.step};
+          this.rejection = null;
         }
       }
       if (event.type === 'tool/result' && this.call &&
@@ -91,7 +102,15 @@ export class FinalTurnSelection {
         const m = event.data.message;
         this.selection = null;
         if (m.isError !== false || m.content.length !== 1 || m.content[0].type !== 'text') return;
-        this.selection = selectionReceipt(JSON.parse(m.content[0].text), this.call.args, this.runID);
+        const receipt = JSON.parse(m.content[0].text);
+        this.selection = selectionReceipt(receipt, this.call.args, this.runID);
+        if (this.selection) {
+          this.rejection = null;
+        } else if (receipt?.selected === false && typeof receipt.continue === 'string') {
+          // A bounded business rejection is recoverable inside the same loop.
+          // The runner may return it to the model once; it is not a selection.
+          this.rejection = {continue: receipt.continue, turn: this.call.turn};
+        }
       }
     } catch {
       // Session observers may contain exceptions, so retain a sticky failure.
@@ -101,6 +120,12 @@ export class FinalTurnSelection {
   completed(end: any): any {
     if (this.failure) throw this.failure;
     return end?.reason.kind === 'completed' && end.turn === this.call?.turn ? this.selection : null;
+  }
+  rejected(end: any): any {
+    if (this.failure) throw this.failure;
+    // A rejection is cleared at the next turn/start, so it cannot leak into a
+    // later turn. Keep it actionable across the model's text-only reply.
+    return end?.reason.kind === 'completed' ? this.rejection : null;
   }
   clear(): void { this.call = null; this.selection = null; }
 }

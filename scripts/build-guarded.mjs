@@ -41,7 +41,7 @@ for(const relative of Object.keys(inputs).filter(p=>p.startsWith('node_modules/'
 }
 for(const license of [...dependencyLicenses].sort())notices.push(path.relative(root,license),fs.readFileSync(license,'utf8'));
 const noticeText=notices.join('\n\n')+'\n',body=built.outputFiles[0].contents;
-const manifest={format:1,candidate_only:true,source_engine:'dsh-source-639ed015-guarded-v6',model_receipt_protocol:2,final_output_protocol:1,tool_input_protocol:1,
+const manifest={format:1,candidate_only:true,source_engine:'dsh-source-639ed015-guarded-v7',model_receipt_protocol:2,final_output_protocol:1,tool_input_protocol:1,
   upstream_commit:lock.commit,upstream_lock_sha256:sha256(fs.readFileSync(path.join(root,'upstream-lock.json'))),
   dependency_lock_sha256:sha256(fs.readFileSync(path.join(root,'pnpm-lock.yaml'))),
   esbuild:esbuild.version,target:'node24',kernel_sha256:sha256(body),kernel_bytes:body.length,
