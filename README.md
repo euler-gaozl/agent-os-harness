@@ -1,5 +1,13 @@
 # Agent OS Harness
 
+## guarded-v6 参数校验候选
+
+`pnpm build:guarded` / `pnpm test:guarded` 构建及验证独立的 `dsh-source-639ed015-guarded-v6`。绑定工具、工作状态与原文交付工具均在 RPC 前按冻结 JSON Schema 校验；参数无效由 DSH 返回普通工具错误，允许模型纠正。不会夹紧分页、转换类型或代改参数；RPC、权限、未知效果及落盘失败仍保持原有失败屏障。
+
+校验器固定 Ajv 8.20.0 / ajv-formats 3.0.1，支持无声明的 2020-12 及明确声明的 2020-12/draft-07；无法编译、未知关键字/格式、外部引用和异步 schema 在初始化时拒绝。每个工具独立编译，不加载网络 schema。部署前仍需固定 Worker pin、Runtime 协议、发布/回滚守卫及真实业务验收；这个候选不会自动替换已安装 final-v5。
+
+本地 29 项检查通过：真实 DSH/Node 配合合成宿主，覆盖超限→纠正→原文交付、坏参数零工具 RPC、错误落盘前后杀进程重放、远端错误仍终止，以及原文选择既有故障用例。原 Windows 实际研究冻结的 15 个工具 schema 均可编译。独立静态评审无阻断；未据此宣称真实模型成功。旧 runner、kernel、上游文件和正式 v5 产物未改，历史产物按原提交和依赖锁重建，不能用新依赖锁替换旧 manifest。
+
 从固定的 DeepSeek Harness（DSH）官方源码构建 Agent 内核，并维护平台的持久化与上下文适配。AgentLoop 仍由 DSH 执行；Go Worker 负责实际模型/工具传输，Runtime 是租约、回执、检查点和工作状态的持久化权威。
 
 ## 源码来源与版本
