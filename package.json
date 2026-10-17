@@ -14,7 +14,9 @@
     "build:budget": "node scripts/build-budget.mjs",
     "test:budget": "node --test tests/budget/*.test.mjs",
     "build:native": "node scripts/build-native.mjs",
-    "test:native": "node --test tests/native/*.test.mjs"
+    "test:native": "node --test tests/native/*.test.mjs",
+    "build:final": "node scripts/build-final.mjs",
+    "test:final": "node --test tests/final/*.test.mjs"
   },
   "devDependencies": {
     "esbuild": "0.28.2",

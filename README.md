@@ -65,8 +65,10 @@ node benchmarks/source-memory.mjs <另一个新证据目录> 128,512,2048,4096 <
 
 ## 当前未完成项
 
-集成平台已正式安装 budget-v3，并完成受控官方供应商验证；真实研究报告的格式及质量仍未通过。
-最新“按模型官方能力开放输入输出”的 native-v4 尚未安装，不能把旧 v3 的安装当作新要求完成。
+同日更新：native-v4 已在 Windows 安装，真实研究已经运行；前面的“候选/未安装”为早期开发记录。正式状态以集成仓 [Windows 研究记录](https://github.com/euler-gaozl/agent-os/blob/main/docs/maintainer/windows-research-20261017.md) 为准，内容质量仍未验收通过。
+
+新 `final-v5` 候选让 DSH 调用官方 `concludeTurn()`，引用已保存候选结束，避免最后一步改写已检查原文。`pnpm build:final` / `pnpm test:final` 的 19 项协议检查及 native-v4 的 17 项回归通过；Runtime / Worker 集成和正式安装未完成。见 [确定性交付协议与证据边界](docs/final-engine-design.md)。
+
 完整内存/恢复、缓存生命周期及平台交付仍未完成。Actions 日常关闭。
 
 [历史详细记录](docs/history/service-notes-20261014.en.md) 保留失败证据、测试范围和不可外推的结论；生产状态以集成仓库为准。
