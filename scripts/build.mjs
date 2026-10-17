@@ -61,7 +61,7 @@ const manifest = {
   kernel_bytes: body.length,
   notices_sha256: sha256(notices),
   runner_sha256: sha256(fs.readFileSync(path.join(root, 'runner.mjs'))),
-  source_engine: 'dsh-source-639ed015-state-v1',
+  source_engine: 'dsh-source-687f282e-state-v1',
   source_runner_sha256: sha256(fs.readFileSync(path.join(root, 'source-runner.mjs'))),
   patches: [versionPatch.record],
   inputs,
